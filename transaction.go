@@ -13,18 +13,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	//"github.com/manucorporat/try"
 	"strings"
-	//"strconv"
 )
 
 type dataTransaction struct {
 	IdKonsumen    string
 	NomorKontrak  string
-	OTR           string
-	AdminFee      string
-	JumlahCicilan string
-	JumlahBunga   string
+	OTR           float64
+	AdminFee      float64
+	JumlahCicilan int
+	JumlahBunga   float64
 	NamaAsset     string
 }
 
@@ -119,18 +117,85 @@ func transaction(c *gin.Context) {
 	if IdKonsumen == "" {
 		errorMessage = errorMessage + "; " + "IdKonsumen - can't null value"
 	}
-
-	NomorKontrak := ""
-	OTR := ""
-	AdminFee := ""
-	JumlahCicilan := ""
-	JumlahBunga := ""
-	NamaAsset := ""
+	NomorKontrak := trimReplace(jLogin.NomorKontrak)
+	if NomorKontrak == "" {
+		errorMessage = errorMessage + "; " + "NomorKontrak - can't null value"
+	}
+	OTR := (jLogin.OTR)
+	// if OTR == "" {
+	// 	errorMessage = errorMessage + "; " + "OTR - can't null value"
+	// }
+	AdminFee := (jLogin.AdminFee)
+	// if AdminFee == "" {
+	// 	errorMessage = errorMessage + "; " + "AdminFee - can't null value"
+	// }
+	JumlahCicilan := (jLogin.JumlahCicilan)
+	if JumlahCicilan < 1 {
+		errorMessage = errorMessage + "; " + "JumlahCicilan - can't null value"
+	}
+	JumlahBunga := (jLogin.JumlahBunga)
+	// if JumlahBunga == "" {
+	// 	errorMessage = errorMessage + "; " + "JumlahBunga - can't null value"
+	// }
+	NamaAsset := trimReplace(jLogin.NamaAsset)
+	if NamaAsset == "" {
+		errorMessage = errorMessage + "; " + "NamaAsset - can't null value"
+	}
 
 	if errorMessage != "" {
 		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessage, c)
 		return
 	}
+
+	//SELECT LimitKredit FROM limit_kredit where IdKonsumen='' and tenor='4'
+	//cek limit & OTR
+	//limit - otr
+
+	var LimitKredit float64
+
+	sJumlahCicilan := fmt.Sprintf("%d", JumlahCicilan)
+
+	query0 := "SELECT LimitKredit FROM limit_kredit where IdKonsumen='" + IdKonsumen + "' and tenor='" + sJumlahCicilan + "'"
+
+	//fmt.Println(query0)
+
+	if err0 := db.QueryRow(query0).Scan(&LimitKredit); err0 != nil {
+
+		errorMessage = fmt.Sprintf("Error running %q: %+v", query0, err0)
+		errorMessageReturn := "Error - mendapatkan Limit Kredit"
+		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessageReturn, c)
+		return
+	}
+	sLimitKredit := fmt.Sprintf("%.2f", LimitKredit)
+	if LimitKredit < OTR {
+
+		errorMessage = "Limit kredit untuk tenor " + sJumlahCicilan + " bulan tidak mencukupi. Sisa limit kredit saat ini " + sLimitKredit + ""
+		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessage, c)
+		return
+	}
+
+	LimitKredit = LimitKredit - OTR
+
+	tx, err := db.Begin()
+
+	query := fmt.Sprintf("update limit_kredit set LimitKredit='%.2f' where IdKonsumen='%s' and tenor='%d'", LimitKredit, IdKonsumen, JumlahCicilan)
+
+	result, err := tx.Exec(query)
+	if err != nil {
+		errorMessage := fmt.Sprintf("Error running %q: %+v", query, err)
+		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessage, c)
+		return
+	}
+	RowCNT, _ := result.RowsAffected()
+	if RowCNT == 0 {
+		errorMessage = "Error - Update data  "
+		errorMessageReturn := "Error - Update LimitKredit - " + query
+		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessageReturn, c)
+		return
+	}
+	// ------ end Update mst_voucher_detail  ------
+
+	tx.Commit()
 
 	query1 := fmt.Sprintf("INSERT INTO transaksi (IdKonsumen, NomorKontrak, OTR, AdminFee, JumlahCicilan, JumlahBunga, NamaAsset,InputDate) values ('%s','%s','%s','%s','%s','%s','%s',current_date());", IdKonsumen, NomorKontrak, OTR, AdminFee, JumlahCicilan, JumlahBunga, NamaAsset)
 	_, err = db.Exec(query1)
@@ -164,7 +229,17 @@ func dataLogTransaction(logData string, ip string, allHeader string, bodyJson st
 		return
 	}
 
-	returnDataJson(logData, errorCodeReturn, errorMsgReturn, c)
+	rex := regexp.MustCompile(`\r?\n`)
+	codeError := "200"
+
+	if errorMsg != "" {
+		codeError = "500"
+	}
+
+	logDataNew := rex.ReplaceAllString(logData+codeError+"~"+endTime.String()+"~"+diff.String()+"~"+errorMsg, "")
+	log.Println(logDataNew)
+
+	returnDataJson(logData, errorCodeReturn, errorMsg, c)
 	return
 
 }
@@ -184,19 +259,6 @@ func returnDataJson(logData string, ErrorCode string, ErrorMessage string, c *gi
 			"ErrorMessage": ErrorMessage,
 		})
 	}
-
-	rex := regexp.MustCompile(`\r?\n`)
-	endTime = time.Now()
-	codeError := "200"
-
-	if ErrorMessage != "" {
-		codeError = "500"
-	}
-
-	diff := endTime.Sub(startTime)
-
-	logDataNew := rex.ReplaceAllString(logData+codeError+"~"+endTime.String()+"~"+diff.String()+"~"+ErrorMessage, "")
-	log.Println(logDataNew)
 
 	runtime.GC()
 
