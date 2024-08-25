@@ -24,12 +24,13 @@ type dataTransaction struct {
 	JumlahCicilan int
 	JumlahBunga   float64
 	NamaAsset     string
+	ParamKey      string
 }
 
 func transaction(c *gin.Context) {
 
 	var errorMessage string
-	jLogin := dataTransaction{}
+	jTransaction := dataTransaction{}
 
 	log.SetFlags(0)
 
@@ -37,7 +38,7 @@ func transaction(c *gin.Context) {
 	startTime = time.Now()
 	dateNow := startTime.Format("2006-01-02")
 
-	logFILE := logfile + "login_" + dateNow + ".log"
+	logFILE := logfile + "transaction_" + dateNow + ".log"
 
 	file, err := os.OpenFile(logFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -105,39 +106,57 @@ func transaction(c *gin.Context) {
 		return
 	}
 
-	err1 := c.BindJSON(&jLogin)
-	//log.Println(jLogin)
+	err1 := c.BindJSON(&jTransaction)
 	if err1 != nil {
 		errorMessage = "Error, Bind Json Data"
 		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessage, c)
 		return
 	}
 
-	IdKonsumen := trimReplace(jLogin.IdKonsumen)
+	var signature string
+	if values, _ := c.Request.Header["Signature"]; len(values) > 0 {
+		signature = values[0]
+	}
+	if signature == "" {
+		errorMessage = "Error, Header - Signature can't empty value"
+		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessage, c)
+		return
+	}
+
+	ParamKey := trimReplace(jTransaction.ParamKey)
+	if ParamKey == "" {
+		errorMessage = errorMessage + "; " + "ParamKey - can't null value"
+	}
+
+	IdKonsumen := trimReplace(jTransaction.IdKonsumen)
 	if IdKonsumen == "" {
 		errorMessage = errorMessage + "; " + "IdKonsumen - can't null value"
 	}
-	NomorKontrak := trimReplace(jLogin.NomorKontrak)
+	NomorKontrak := trimReplace(jTransaction.NomorKontrak)
 	if NomorKontrak == "" {
 		errorMessage = errorMessage + "; " + "NomorKontrak - can't null value"
 	}
-	OTR := (jLogin.OTR)
-	// if OTR == "" {
-	// 	errorMessage = errorMessage + "; " + "OTR - can't null value"
+	OTR := (jTransaction.OTR)
+	if OTR < 1 {
+		errorMessage = errorMessage + "; " + "OTR - can't zero value"
+	}
+	// AdminFee := (jTransaction.AdminFee)
+	// if AdminFee < 1 {
+	// 	errorMessage = errorMessage + "; " + "AdminFee - can't zero value"
 	// }
-	AdminFee := (jLogin.AdminFee)
-	// if AdminFee == "" {
-	// 	errorMessage = errorMessage + "; " + "AdminFee - can't null value"
-	// }
-	JumlahCicilan := (jLogin.JumlahCicilan)
+
+	AdminFee := 0.00
+	AdminFee = (2.00 / 100) * OTR
+	JumlahCicilan := (jTransaction.JumlahCicilan)
 	if JumlahCicilan < 1 {
 		errorMessage = errorMessage + "; " + "JumlahCicilan - can't null value"
 	}
-	JumlahBunga := (jLogin.JumlahBunga)
-	// if JumlahBunga == "" {
+	JumlahBunga := 2 //persen
+	// JumlahBunga := (jTransaction.JumlahBunga)
+	// if JumlahBunga < 1 {
 	// 	errorMessage = errorMessage + "; " + "JumlahBunga - can't null value"
 	// }
-	NamaAsset := trimReplace(jLogin.NamaAsset)
+	NamaAsset := trimReplace(jTransaction.NamaAsset)
 	if NamaAsset == "" {
 		errorMessage = errorMessage + "; " + "NamaAsset - can't null value"
 	}
@@ -147,17 +166,31 @@ func transaction(c *gin.Context) {
 		return
 	}
 
-	//SELECT LimitKredit FROM limit_kredit where IdKonsumen='' and tenor='4'
-	//cek limit & OTR
-	//limit - otr
+	// ------ start Check Signature ------
+	errorMessage = ""
+	valid_Signature := validSignature(bodyString, ParamKey)
+
+	if valid_Signature == "" {
+		errorMessage = "Error, return Valid Signature is empty value"
+		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessage, c)
+	}
+
+	if valid_Signature != signature && errorMessage == "" {
+		errorMessage = "Error, Header - Incorrect Signature=" + valid_Signature + "=" + signature
+		dataLogTransaction(logData, ip, allHeader, bodyJson, "1", "1", errorMessage, errorMessage, c)
+	}
+
+	if errorMessage != "" {
+		return
+	}
+	errorMessage = ""
+	// ------ end Check Signature ------
 
 	var LimitKredit float64
 
 	sJumlahCicilan := fmt.Sprintf("%d", JumlahCicilan)
 
 	query0 := "SELECT LimitKredit FROM limit_kredit where IdKonsumen='" + IdKonsumen + "' and tenor='" + sJumlahCicilan + "'"
-
-	//fmt.Println(query0)
 
 	if err0 := db.QueryRow(query0).Scan(&LimitKredit); err0 != nil {
 
@@ -197,7 +230,7 @@ func transaction(c *gin.Context) {
 
 	tx.Commit()
 
-	query1 := fmt.Sprintf("INSERT INTO transaksi (IdKonsumen, NomorKontrak, OTR, AdminFee, JumlahCicilan, JumlahBunga, NamaAsset,InputDate) values ('%s','%s','%s','%s','%s','%s','%s',current_date());", IdKonsumen, NomorKontrak, OTR, AdminFee, JumlahCicilan, JumlahBunga, NamaAsset)
+	query1 := fmt.Sprintf("INSERT INTO transaksi (IdKonsumen, NomorKontrak, OTR, AdminFee, JumlahCicilan, JumlahBunga, NamaAsset,InputDate) values ('%s','%s','%2.f','%2.f','%d','%d','%s',now());", IdKonsumen, NomorKontrak, OTR, AdminFee, JumlahCicilan, JumlahBunga, NamaAsset)
 	_, err = db.Exec(query1)
 	if err != nil {
 		errMSG := fmt.Sprintf("Error running %q: %+v", query1, err)
@@ -225,7 +258,7 @@ func dataLogTransaction(logData string, ip string, allHeader string, bodyJson st
 
 		errorMessage := fmt.Sprintf("Error running %q: %+v", query1, err1)
 
-		returnDataJson(logData, errorCode, errorMessage, c)
+		returnDataJsonTransaction(logData, errorCode, errorMessage, c)
 		return
 	}
 
@@ -239,12 +272,12 @@ func dataLogTransaction(logData string, ip string, allHeader string, bodyJson st
 	logDataNew := rex.ReplaceAllString(logData+codeError+"~"+endTime.String()+"~"+diff.String()+"~"+errorMsg, "")
 	log.Println(logDataNew)
 
-	returnDataJson(logData, errorCodeReturn, errorMsg, c)
+	returnDataJsonTransaction(logData, errorCodeReturn, errorMsg, c)
 	return
 
 }
 
-func returnDataJson(logData string, ErrorCode string, ErrorMessage string, c *gin.Context) {
+func returnDataJsonTransaction(logData string, ErrorCode string, ErrorMessage string, c *gin.Context) {
 
 	if strings.Contains(ErrorMessage, "Error running") == true {
 		ErrorMessage = "Error Execute data"

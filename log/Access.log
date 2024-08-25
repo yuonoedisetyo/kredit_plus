@@ -3,7 +3,12 @@
  - using code:	gin.SetMode(gin.ReleaseMode)
 
 [GIN-debug] POST   /api/v1/transaction       --> main.transaction (5 handlers)
+[GIN-debug] POST   /api/v1/penagihan         --> main.penagihan (5 handlers)
+[GIN-debug] POST   /api/v1/login             --> main.login (5 handlers)
 [GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
 Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
 [GIN-debug] Listening and serving HTTP on :8080
-192.168.10.73 - [Sat, 24 Aug 2024 03:20:51 +0700] "POST" "/api/v1/transaction" "HTTP/1.1" "200" "245.1978ms" "36" "PostmanRuntime/7.41.1" "" 
+192.168.10.73 - [Sun, 25 Aug 2024 13:06:46 +0700] "POST" "/api/v1/login" "HTTP/1.1" "200" "64.2264ms" "147" "PostmanRuntime/7.41.1" "" 
+192.168.10.73 - [Sun, 25 Aug 2024 13:06:51 +0700] "POST" "/api/v1/login" "HTTP/1.1" "200" "84.3627ms" "147" "PostmanRuntime/7.41.1" "" 
+192.168.10.73 - [Sun, 25 Aug 2024 13:13:38 +0700] "POST" "/api/v1/login" "HTTP/1.1" "200" "201.4969ms" "174" "PostmanRuntime/7.41.1" "" 
+192.168.10.73 - [Sun, 25 Aug 2024 13:13:59 +0700] "POST" "/api/v1/transaction" "HTTP/1.1" "200" "78.4211ms" "137" "PostmanRuntime/7.41.1" "" 

@@ -104,15 +104,15 @@ func main() {
 
 	r.Use(gin.Recovery())
 
-	//r.Use(MaxAllowed(100))
 	r.Use(gzip.DefaultHandler().Gin)
 
 	r.LoadHTMLFiles("index.html")
 
 	v1 := r.Group("api/v1")
 	{
-		v1.POST("/transaction", transaction) //internal use
-
+		v1.POST("/transaction", transaction)
+		v1.POST("/penagihan", penagihan)
+		v1.POST("/login", login)
 	}
 
 	r.Run(portrun)
