@@ -1,0 +1,127 @@
+{
+	"info": {
+		"_postman_id": "a08e7acf-ed53-456e-8f16-b98f91e45a2c",
+		"name": "kredit_plus",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "6529119"
+	},
+	"item": [
+		{
+			"name": "transaction",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Signature",
+						"value": "cc599e1fc227e65f5d1f7279f8d6ae48",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"IdKonsumen\": \"1\",\r\n    \"NomorKontrak\": \"12345611\",\r\n    \"OTR\": 1400,\r\n    \"JumlahCicilan\": 3,\r\n    \"NamaAsset\": \"Headset\",\r\n    \"ParamKey\":\"MTcyNDU2NjQxODY3NDUyNg==EgtYQwXvA7wwVUV3bypbmFPbddgYCF\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://192.168.10.73:8080/api/v1/transaction",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"10",
+						"73"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"transaction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "penagihan",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Signature",
+						"value": "c6a0c37b85469bd1811a2ae4577438a6",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"ParamKey\":\"Tes\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://192.168.10.73:8080/api/v1/penagihan",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"10",
+						"73"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"penagihan"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Signature",
+						"value": "c6a0c37b85469bd1811a2ae4577438a6",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"UserID\":\"administrator\",\r\n    \"Password\":\"P4sSW0rD!@\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://192.168.10.73:8080/api/v1/login",
+					"protocol": "http",
+					"host": [
+						"192",
+						"168",
+						"10",
+						"73"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"login"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
